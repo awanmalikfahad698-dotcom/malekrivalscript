@@ -10,7 +10,7 @@
     Menu key: RIGHT CTRL
     Settings auto-save and auto-reload.
 --]]
-
+getgenv().MalekSource = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/awanmalikfahad698-dotcom/malekrivalscript/main/malekrivals.lua"))()'
 --// Services
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
