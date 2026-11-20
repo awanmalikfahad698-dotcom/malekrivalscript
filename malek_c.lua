@@ -177,18 +177,31 @@ end))
 
 --// Trigger
 local function clickMouse()
+    if mouse1click then
+        pcall(mouse1click)
+        return
+    end
     local cam = getCam()
     local vp = cam and cam.ViewportSize or Vector2.new(800, 600)
     local x, y = vp.X / 2, vp.Y / 2
-    if VirtualInputManager then
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+    end)
+    task.delay(0.03, function()
         pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
-            task.wait(0.02)
             VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
         end)
-    elseif mouse1click then
-        pcall(mouse1click)
-    end
+    end)
+end
+
+local function inFireCone(t)
+    local cam = getCam()
+    if not cam or not t or not t.part or not t.part.Parent then return false end
+    local sp, onScreen = cam:WorldToViewportPoint(t.part.Position)
+    if not onScreen then return false end
+    local vp = cam.ViewportSize
+    local d = (Vector2.new(sp.X, sp.Y) - Vector2.new(vp.X / 2, vp.Y / 2)).Magnitude
+    return d <= math.max(Config.FireCone, 6)
 end
 
 task.spawn(function()
@@ -196,27 +209,33 @@ task.spawn(function()
         local wait = Config.ShootDelay
         if Config.Humanize then wait = wait * (0.75 + math.random() * 0.6) end
         task.wait(wait)
+
         if not destroyed and (Config.AutoShoot or Config.AutoFarm or Config.AutoFarmLevel) then
-            local allowed
-            if Config.AutoFarm or Config.AutoFarmLevel or Config.FireMode == "Always" then
-                allowed = true
-            elseif Config.FireMode == "Toggle" then
-                allowed = fireToggle
-            else
-                allowed = UserInputService:IsKeyDown(Config.AutoShootKey)
-            end
+            local forced = Config.AutoFarm or Config.AutoFarmLevel
+            local allowed = forced
+                or Config.FireMode == "Always"
+                or (Config.FireMode == "Toggle" and fireToggle)
+                or (Config.FireMode == "Hold" and UserInputService:IsKeyDown(Config.AutoShootKey))
+
             if allowed then
-                local t = lastTarget
-                if t and targetStillValid(t) then
-                    local cam = getCam()
-                    if cam then
-                        local vp = cam.ViewportSize
-                        local sp, onScreen = cam.WorldToViewportPoint(t.part.Position)
-                        if onScreen then
-                            local d = (Vector2.new(sp.X, sp.Y) - Vector2.new(vp.X / 2, vp.Y / 2)).Magnitude
-                            if d <= Config.FireCone then clickMouse() end
-                        end
+                local t
+                if LockedPlayer and LockedPlayer.Character then
+                    local p = LockedPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if p and targetStillValid({ part = p }) then t = { part = p } end
+                end
+                if not t and lastTarget and targetStillValid(lastTarget) then
+                    t = lastTarget
+                end
+                if not t then
+                    t = findTarget()
+                    if t then
+                        lastTarget = t
+                        lockUntil = tick() + 0.75
                     end
+                end
+
+                if t and inFireCone(t) then
+                    clickMouse()
                 end
             end
         end
