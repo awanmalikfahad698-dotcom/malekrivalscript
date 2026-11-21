@@ -1,6 +1,6 @@
 local REPO = "awanmalikfahad698-dotcom/malekrivalscript"
 local BASE = "https://raw.githubusercontent.com/" .. REPO .. "/main/"
-local PARTS = { "malek_a.lua", "malek_b.lua", "malek_c.lua", "malek_d.lua" }
+local PARTS = { "malek_a.lua", "malek_a2.lua", "malek_b.lua", "malek_c.lua", "malek_d.lua" }
 local V = tostring(math.floor(tick()))
 
 -- strip top-level locals so all parts share one global scope;
@@ -23,15 +23,15 @@ local function flatten(src)
     return table.concat(out, "\n")
 end
 
-local buf = {}
 for _, name in ipairs(PARTS) do
     local ok, src = pcall(function() return game:HttpGet(BASE .. name .. "?v=" .. V) end)
     if not ok or type(src) ~= "string" or #src < 200 then
-        return print("[flitch] failed to fetch " .. name)
+        return print("[flitch] failed to fetch " .. name .. " (" .. #tostring(src) .. " bytes)")
     end
-    buf[#buf + 1] = flatten(src)
-end
 
-local fn, err = loadstring(table.concat(buf, "\n"))
-if not fn then return print("[flitch] compile error: " .. tostring(err)) end
-fn()
+    local fn, err = loadstring(flatten(src), "=" .. name)
+    if not fn then return print("[flitch] compile error: " .. tostring(err)) end
+
+    local ran, rerr = pcall(fn)
+    if not ran then print("[flitch] runtime error: " .. tostring(rerr)) end
+end
