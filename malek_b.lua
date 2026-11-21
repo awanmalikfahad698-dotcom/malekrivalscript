@@ -415,19 +415,18 @@ end
 
 local CLICK_EVENTS = { "MouseButton1Down", "MouseButton1Click", "MouseButton1Up", "Activated" }
 
-local function fireSignal(btn)
+local function fireOn(inst)
     local fired = false
-
-    if getconnections then
-        for _, ev in ipairs(CLICK_EVENTS) do
-            local sig = btn[ev]
-            if sig then
+    for _, ev in ipairs(CLICK_EVENTS) do
+        local sig = inst[ev]
+        if sig then
+            if getconnections then
                 local ok, conns = pcall(getconnections, sig)
                 if ok and type(conns) == "table" then
                     for _, c in ipairs(conns) do
                         if c and c.Fire then
                             local args = (ev == "Activated")
-                                and { btn.AbsolutePosition.X, btn.AbsolutePosition.Y }
+                                and { inst.AbsolutePosition.X, inst.AbsolutePosition.Y }
                                 or {}
                             pcall(function() c:Fire(unpack(args)) end)
                             fired = true
@@ -435,36 +434,47 @@ local function fireSignal(btn)
                     end
                 end
             end
-        end
-    end
-
-    if not fired and firesignal then
-        for _, ev in ipairs({ "MouseButton1Click", "Activated" }) do
-            if btn[ev] then
-                pcall(firesignal, btn[ev])
+            if not fired and firesignal then
+                pcall(firesignal, sig)
                 fired = true
             end
         end
     end
-
     return fired
+end
+
+-- fires the button, then a clickable parent if the button itself is inert
+local function fireSignal(btn)
+    if fireOn(btn) then return true end
+    local parent = btn.Parent
+    if parent and parent:IsA("GuiButton") then return fireOn(parent) end
+    return false
+end
+
+local function pointOverMenu(p)
+    if not main.Visible then return false end
+    local a, s = main.AbsolutePosition, main.AbsoluteSize
+    return p.X >= a.X and p.X <= a.X + s.X and p.Y >= a.Y and p.Y <= a.Y + s.Y
 end
 
 local function pressButton(btn)
     uiCooldown = tick()
     if fireSignal(btn) then return true end
 
-    local wasOpen = main.Visible
-    if wasOpen then main.Visible = false end
+    -- last resort only: synthetic click, hidden just long enough if it would land on us
     local p = btn.AbsolutePosition + btn.AbsoluteSize / 2
+    local hide = pointOverMenu(p)
+    if hide then main.Visible = false end
     local ok = pcall(function()
         VirtualInputManager:SendMouseButtonEvent(p.X, p.Y, 0, true, game, 1)
         task.wait(0.04)
         VirtualInputManager:SendMouseButtonEvent(p.X, p.Y, 0, false, game, 1)
     end)
-    task.delay(0.12, function()
-        if wasOpen and main then main.Visible = true end
-    end)
+    if hide then
+        task.delay(0.1, function()
+            if main then main.Visible = true end
+        end)
+    end
     return ok
 end
 
