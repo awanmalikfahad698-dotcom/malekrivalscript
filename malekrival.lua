@@ -1,6 +1,6 @@
 local REPO = "awanmalikfahad698-dotcom/malekrivalscript"
 local BASE = "https://raw.githubusercontent.com/" .. REPO .. "/main/"
-local PARTS = { "malek_a.lua", "malek_b.lua", "malek_c.lua" "malek_b.lua" }
+local PARTS = { "malek_a.lua", "malek_b.lua", "malek_c.lua" "malek_d.lua" }
 local V = tostring(math.floor(tick()))
 
 local buf = {}
