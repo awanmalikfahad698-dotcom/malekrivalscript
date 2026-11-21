@@ -630,7 +630,7 @@ local function applyThemeTo(root)
         if o:IsA("UIGradient") then
             local kps = {}
             for _, kp in ipairs(o.Color.Keypoints) do
-                kps[#kps + 1] = ColorSequenceKeypoint(kp.Time, map(kp.Value))
+                kps[#kps + 1] = ColorSequenceKeypoint.new(kp.Time, map(kp.Value))
             end
             o.Color = ColorSequence.new(kps)
         end
